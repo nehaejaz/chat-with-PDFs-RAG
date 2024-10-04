@@ -11,6 +11,8 @@ load_dotenv()
 
 
 PROMPT_TEMPLATE = """
+You are going to answer questions about a girl whose name is Neha Ejaz.
+Make sure to answer questions highlighting her qualities and abilities. Also make sure the sentance of your answer is complete.
 Answer the question:{question} based only on the following information: {context}
 
 """
@@ -40,6 +42,7 @@ def query_rag(query_text: str):
     
     llm = HuggingFaceEndpoint(
         repo_id="HuggingFaceH4/zephyr-7b-beta",
+        # repo_id="meta-llama/Llama-3.1-8B",
         task="text-generation",
         max_new_tokens=512,
         do_sample=False,
@@ -51,15 +54,17 @@ def query_rag(query_text: str):
     )
 
     chat_model = ChatHuggingFace(llm=llm)
-    response_text = chat_model.invoke(query_text).content
+    response_text = chat_model.invoke(prompt)
+    # print("response_text=>",response_text)
     
     sources = [docs.metadata.get("id", None) for docs, _score in results]
-    formatted_response = f'Response:{response_text}\nSource:{sources}'
-    print(formatted_response) 
+    formatted_response = f'Response:{response_text.content}\nSource:{sources}'
+    # print(formatted_response) 
     formatted_response = {
-        "text": response_text,
+        "text": response_text.content,
         "sources" : sources
-    }   
+    }
+    print("response=>>>",formatted_response["text"])   
     return formatted_response
     
     
