@@ -35,6 +35,6 @@ if user_query:
     chatbot_response = get_chatbot_response(user_query)
     # Add user input and chatbot response to conversation history
     st.session_state['conversation'].append(f"You: {user_query}")
-    st.session_state['conversation'].append(f"{chatbot_response['text']}\nSource: {chatbot_response['sources']}")
+    st.session_state['conversation'].append(f"{chatbot_response['text']}")
     st.input_box= ""
     display_chat_history()
