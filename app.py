@@ -1,5 +1,5 @@
 import streamlit as st
-from query_data import query_rag
+from run_rag_pipeline import run_rag_pipeline
 
 # Title of the app
 st.title("Chatbot")
@@ -11,7 +11,7 @@ if 'conversation' not in st.session_state:
 
 # Function to get response from OpenAI
 def get_chatbot_response(user_query):
-    formatted_response = query_rag(user_query)
+    formatted_response = run_rag_pipeline(user_query)
     return formatted_response
 
 chat_container = st.container()
