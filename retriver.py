@@ -1,9 +1,8 @@
 """
-Module for retieving Data and context
+Module for retieving conetxt from Data
 """
-from langchain_community.vectorstores.chroma import Chroma
-
-CHROMA_PATH = "./chroma_neha"
+# from langchain_community.vectorstores.chroma import Chroma
+from langchain_chroma import Chroma
 
 class Retriever:
     """
