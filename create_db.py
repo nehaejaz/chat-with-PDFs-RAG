@@ -1,31 +1,87 @@
-from langchain_community.document_loaders import PyPDFLoader, UnstructuredMarkdownLoader
+from langchain_community.document_loaders import PyPDFLoader, UnstructuredMarkdownLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
-from langchain_community.vectorstores.chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-import openai
-from dotenv import load_dotenv
-import os 
-import shutil
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_community.vectorstores.chroma import Chroma
+from langchain.schema import Document
+from dotenv import load_dotenv
+from enum import Enum
+import asyncio
+import argparse
+import os 
 
 
 load_dotenv()
 
-
-DATA_PATH = "data/books"
-CHROMA_PATH = "chroma_alice"
+CHROMA_PATH = "chroma_testing_pdf"
+class DataType(Enum):
+    PDF = "pdf"
+    MARKDOWN = "markdown"
 
 def main():
-    generate_data_store()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("data_path", type=str, help="Please enter the data path")
+    parser.add_argument("data_type", type=str, choices=['markdown', 'pdf'], help="Data type to process. Choose either 'markdown' or 'pdf'.")
+    args = parser.parse_args()
     
-def generate_data_store():
-    documents = load_documents(DATA_PATH)
-    chunks = split_text(documents)
-    save_to_chroma(chunks)
+    data_path = args.data_path
+    data_type = args.data_type
+    generate_data_store(data_path, data_type)
     
-#This function is used to load all the MD files in data/books folder
-def load_documents(data_path):
+def generate_data_store(data_path, data_type):
+    """
+    Description: Loads data from the data diroctary to convert them
+    to chunks and store them to the chroma DB.
+    """
+    print(f"Selected data type: {DataType.PDF.value} ")
+    if not os.path.exists(data_path):
+        print(f"Error: The specified data path '{data_path}' does not exist.")
+        return 
+    
+    if data_type == DataType.PDF:
+        print("start")
+        documents = asyncio.run(load_pdf_documents(data_path))
+        print("end")
+        
+    elif data_type == DataType.MARKDOWN:
+        documents = load_markdown_documents(data_path)
+    
+    print("end of body")
+        
+    # print(len(documents))
+    # chunks = split_text(documents)
+    # save_to_chroma(chunks)
+    
+async def load_pdf_documents(data_path):
+    """
+    Description: Reads through the PDFs files from a
+    data directory and retruns them as a list of documents.
+    
+    Args:
+    data_path (str): Path of the data directory
+    
+    Returns:
+    documents (List): List of Documents from data dictory 
+    """
+    
+    documents = []
+    raw_text = ""
+    count = 0
+    for filename in os.listdir(data_path):
+        loader = PyPDFLoader(os.path.join(data_path,filename))
+        async for page in loader.alazy_load():
+            documents.append(page)
+        # for page in pdf_reader.pages:
+        #     count +=1
+        #     raw_text += page.extract_text()
+        # documents.append((raw_text,))
+    return documents
+    
+def load_markdown_documents(data_path):
+    """
+    Description: Reads through the markdown files in the 
+    data directory and returns them as a list of documents
+    """
+    
     documents=[]
     # Load the markdown file using UnstructuredMarkdownLoader
     for filename in os.listdir(data_path):
@@ -33,11 +89,19 @@ def load_documents(data_path):
         documents.extend(loader.load())
     return documents
 
-#This function slpits the documents into smaller chunks for better search 
 def split_text(documents: list[Document]):
+    """
+    Description: Perfoms Recursive Character chunking on the documents after each new line (\n)
+    
+    Args:
+    documents (List): List of documents to perform chunking on
+    
+    Returns:
+    Chunks (List): Smaller chunks of the document 
+    """
     text_splitter= RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=500,
+        chunk_size=300,
+        chunk_overlap=100,
         length_function=len,
         add_start_index=True,
     )
@@ -46,7 +110,12 @@ def split_text(documents: list[Document]):
     return chunks
 
 def save_to_chroma(chunks: list[Document]):
-        
+    """
+    Description: Saves the chunk to Chroma DB (Vector Database)
+    
+    Args:
+    chunks (List): List of smaller chunks
+    """    
     db = Chroma(
         embedding_function=get_embedding_function(), persist_directory=CHROMA_PATH
     )
@@ -104,6 +173,7 @@ def get_embedding_function():
         model_name=hf_model, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs
     )
     return embeddings
+
 if __name__ == "__main__":
     main()
 
