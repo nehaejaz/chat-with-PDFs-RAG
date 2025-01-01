@@ -7,12 +7,18 @@ from dotenv import load_dotenv
 from enum import Enum
 import asyncio
 import argparse
+import tempfile
+import time
+import uuid
 import os 
 
 
 load_dotenv()
 
-CHROMA_PATH = "chroma_testing_pdf"
+unique_id = uuid.uuid4().hex[:6]
+timestamp = time.strftime("%Y%m%d_%H%M%S")
+CHROMA_PATH = f"{unique_id}_{timestamp}"
+
 class DataType(Enum):
     PDF = "pdf"
     MARKDOWN = "markdown"
@@ -27,53 +33,52 @@ def main():
     data_type = args.data_type
     generate_data_store(data_path, data_type)
     
-def generate_data_store(data_path, data_type):
+def generate_data_store(files, data_type):
     """
     Description: Loads data from the data diroctary to convert them
     to chunks and store them to the chroma DB.
     """
-    print(f"Selected data type: {DataType.PDF.value} ")
-    if not os.path.exists(data_path):
-        print(f"Error: The specified data path '{data_path}' does not exist.")
-        return 
-    
-    if data_type == DataType.PDF:
-        print("start")
-        documents = asyncio.run(load_pdf_documents(data_path))
-        print("end")
+    documents = []
+    if data_type == DataType.PDF.value:
+        print("strating pdf extraction...")
+        documents = asyncio.run(load_pdf_documents(files))
         
-    elif data_type == DataType.MARKDOWN:
-        documents = load_markdown_documents(data_path)
+    elif data_type == DataType.MARKDOWN.value:
+        documents = load_markdown_documents(files)
     
-    print("end of body")
-        
-    # print(len(documents))
-    # chunks = split_text(documents)
-    # save_to_chroma(chunks)
+    if len(documents) != 0:    
+        print("lwngth is ",len(documents))
+        chunks = split_text(documents)
+        save_to_chroma(chunks)
+        print("Finished")
+
     
-async def load_pdf_documents(data_path):
+async def load_pdf_documents(files):
     """
-    Description: Reads through the PDFs files from a
-    data directory and retruns them as a list of documents.
+    Description: Reads the streamlit file and creates a temporary PDF
+    file for PDF extraction process and retruns them as a list of documents.
     
     Args:
-    data_path (str): Path of the data directory
+    files (streamlit.runtime.uploaded_file_manager.UploadedFile): Streamlit File Object
     
     Returns:
     documents (List): List of Documents from data dictory 
     """
-    
     documents = []
-    raw_text = ""
-    count = 0
-    for filename in os.listdir(data_path):
-        loader = PyPDFLoader(os.path.join(data_path,filename))
-        async for page in loader.alazy_load():
-            documents.append(page)
-        # for page in pdf_reader.pages:
-        #     count +=1
-        #     raw_text += page.extract_text()
-        # documents.append((raw_text,))
+    print("Extracting Data from PDFs")
+    for file in files:
+        try:
+            if hasattr(file,"read"):
+                with tempfile.NamedTemporaryFile(delete=False,suffix=".pdf") as tmp:
+                    tmp.write(file.read())
+                    tmp_path = tmp.name
+                loader = PyPDFLoader(tmp_path)
+            else:
+                loader = PyPDFLoader(file)
+            async for page in loader.alazy_load():
+                documents.append(page)
+        except Exception as e:
+            print(f"Error loading file {file}: {e}")        
     return documents
     
 def load_markdown_documents(data_path):
