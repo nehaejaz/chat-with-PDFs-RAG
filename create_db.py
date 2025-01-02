@@ -17,7 +17,7 @@ load_dotenv()
 
 unique_id = uuid.uuid4().hex[:6]
 timestamp = time.strftime("%Y%m%d_%H%M%S")
-CHROMA_PATH = f"{unique_id}_{timestamp}"
+schema_name = f"{unique_id}_{timestamp}"
 
 class DataType(Enum):
     PDF = "pdf"
@@ -46,11 +46,16 @@ def generate_data_store(files, data_type):
     elif data_type == DataType.MARKDOWN.value:
         documents = load_markdown_documents(files)
     
-    if len(documents) != 0:    
-        print("lwngth is ",len(documents))
-        chunks = split_text(documents)
-        save_to_chroma(chunks)
-        print("Finished")
+    if len(documents) != 0:   
+        try: 
+            chunks = split_text(documents)
+            save_to_chroma(chunks)
+            print("Finished ✅")
+            print(schema_name)
+            return schema_name
+        except Exception as e:
+            print(f"An error occurred while processing documents: {e} ")
+        
 
     
 async def load_pdf_documents(files):
@@ -122,7 +127,7 @@ def save_to_chroma(chunks: list[Document]):
     chunks (List): List of smaller chunks
     """    
     db = Chroma(
-        embedding_function=get_embedding_function(), persist_directory=CHROMA_PATH
+        embedding_function=get_embedding_function(), persist_directory=schema_name
     )
     chunks_with_id = calculate_chunks(chunks)
     
