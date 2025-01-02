@@ -5,6 +5,7 @@ from response_generator import ResponseGenerator
 from retriver import Retriever
 from langchain import hub
 
+
 PROMPT_TEMPLATE = hub.pull("rlm/rag-prompt")
 
 # PROMPT_TEMPLATE = """
@@ -13,19 +14,19 @@ PROMPT_TEMPLATE = hub.pull("rlm/rag-prompt")
 # """
 # prompt_template = ChatPromptTemplate.from_template(self.PROMPT_TEMPLATE)
 
-CHROMA_PATH = "./chroma_neha"
-
 def main():
     #Create CLI
     parser = argparse.ArgumentParser()
     parser.add_argument("query_text", type=str, help="Please enter the query text")
+    parser.add_argument("schema_name", type=str, help="Please enter the schema name")
     args = parser.parse_args()
     query = args.query_text
-    run_rag_pipeline(query)
+    schema_name = args.schema_name
+    response = run_rag_pipeline(schema_name,query)
+    print(response)
     
-def run_rag_pipeline(query: str):
-
-    retriever = Retriever(CHROMA_PATH, query, get_embedding_function)
+def run_rag_pipeline(schema_name, query: str):
+    retriever = Retriever(schema_name, query, get_embedding_function)
     response_generator = ResponseGenerator(model="command-r")
     rag_pipeline = RAGPipeline(
         PROMPT_TEMPLATE, 
